@@ -4,4 +4,4 @@ spring:
 
 logging:
   level:
-    org.elasticsearch.client: TRACE # Elasticsearch? ?? ??? ??
+    org.elasticsearch.client: TRACE # Elasticsearch ?? ?? ??
