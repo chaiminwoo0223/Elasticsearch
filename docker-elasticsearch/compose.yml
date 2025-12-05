@@ -1,7 +1,9 @@
 # 아래 설정은 개발/테스트 환경에서 간단하게 테스트하기 위한 옵션 (운영 환경에서는 설정하면 안 됨)
 services:
   elastic:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.14.0 # 8.14.0 버전
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - 9200:9200 # 9200번 포트에서 Elasticsearch 실행
     environment:
@@ -14,4 +16,3 @@ services:
       - 5601:5601 # 5601번 포트에서 kibana 실행
     environment:
       - ELASTICSEARCH_HOSTS=http://elastic:9200 # kibana가 통신할 Elasticsearch 주소 알려주기
-
