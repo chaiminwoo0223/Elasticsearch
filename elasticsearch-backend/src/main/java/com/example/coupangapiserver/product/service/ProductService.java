@@ -1,21 +1,22 @@
 package com.example.coupangapiserver.product.service;
 
+import com.example.coupangapiserver.product.domain.ProductDocument;
+import com.example.coupangapiserver.product.repository.ProductDocumentRepository;
 import com.example.coupangapiserver.product.repository.ProductRepository;
 import com.example.coupangapiserver.product.domain.Product;
 import com.example.coupangapiserver.product.dto.CreateProductRequestDto;
 import java.util.List;
+
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 @Service
+@RequiredArgsConstructor
 public class ProductService {
-
   private final ProductRepository productRepository;
-
-  public ProductService(ProductRepository productRepository) {
-    this.productRepository = productRepository;
-  }
+  private final ProductDocumentRepository productDocumentRepository;
 
   public List<Product> getProducts(int page, int size) {
     Pageable pageable = PageRequest.of(page - 1, size);
@@ -30,10 +31,23 @@ public class ProductService {
         createProductRequestDto.getRating(),
         createProductRequestDto.getCategory()
     );
-    return productRepository.save(product);
+
+    Product savedProduct = productRepository.save(product);
+    ProductDocument productDocument = new ProductDocument(
+            savedProduct.getId().toString(),
+            savedProduct.getName(),
+            savedProduct.getDescription(),
+            savedProduct.getPrice(),
+            savedProduct.getRating(),
+            savedProduct.getCategory()
+    );
+
+    productDocumentRepository.save(productDocument);
+    return savedProduct;
   }
 
   public void deleteProduct(Long id) {
     productRepository.deleteById(id);
+    productDocumentRepository.deleteById(id.toString());
   }
 }
