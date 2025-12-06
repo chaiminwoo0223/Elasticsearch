@@ -1,13 +1,13 @@
 package com.example.coupangapiserver.product.service;
 
-import co.elastic.clients.elasticsearch._types.query_dsl.MultiMatchQuery;
-import co.elastic.clients.elasticsearch._types.query_dsl.Query;
-import co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
+import co.elastic.clients.elasticsearch._types.query_dsl.*;
 import com.example.coupangapiserver.product.domain.ProductDocument;
 import com.example.coupangapiserver.product.repository.ProductDocumentRepository;
 import com.example.coupangapiserver.product.repository.ProductRepository;
 import com.example.coupangapiserver.product.domain.Product;
 import com.example.coupangapiserver.product.dto.CreateProductRequestDto;
+
+import java.util.ArrayList;
 import java.util.List;
 
 import lombok.RequiredArgsConstructor;
@@ -16,6 +16,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.SearchHits;
+import org.springframework.data.elasticsearch.core.query.HighlightQuery;
+import org.springframework.data.elasticsearch.core.query.highlight.Highlight;
+import org.springframework.data.elasticsearch.core.query.highlight.HighlightField;
+import org.springframework.data.elasticsearch.core.query.highlight.HighlightParameters;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -77,5 +81,65 @@ public class ProductService {
   public void deleteProduct(Long id) {
     productRepository.deleteById(id);
     productDocumentRepository.deleteById(id.toString());
+  }
+
+  public List<ProductDocument> searchProducts(String query, String category, double minPrice, double maxPrice, int page, int size) {
+      Query multiMatchQuery = MultiMatchQuery.of(m -> m
+              .query(query)
+              .fields("name^3", "description^1", "category^2")
+              .fuzziness("AUTO")
+      )._toQuery();
+
+      List<Query> filters = new ArrayList<>();
+
+      if (category != null && !category.isEmpty()) {
+          Query categoryFilter = TermQuery.of(t -> t
+                  .field("category.raw")
+                  .value(category)
+          )._toQuery();
+
+          filters.add(categoryFilter);
+      }
+
+      Query priceRangeFilter = NumberRangeQuery.of(r -> r
+              .field("price")
+              .gte(minPrice)
+              .lte(maxPrice)
+      )._toRangeQuery()._toQuery();
+      filters.add(priceRangeFilter);
+
+      Query ratingShould = NumberRangeQuery.of(r -> r
+              .field("rating")
+              .gt(4.0)
+      )._toRangeQuery()._toQuery();
+
+      Query boolQuery = BoolQuery.of(b -> b
+              .must(multiMatchQuery)
+              .filter(filters)
+              .should(ratingShould)
+      )._toQuery();
+
+      HighlightParameters highlightParameters = HighlightParameters.builder()
+              .withPreTags("<b>")
+              .withPostTags("</b>")
+              .build();
+      Highlight highlight = new Highlight(highlightParameters, List.of(new HighlightField("name")));
+      HighlightQuery highlightQuery = new HighlightQuery(highlight, ProductDocument.class);
+
+      NativeQuery nativeQuery = NativeQuery.builder()
+              .withQuery(boolQuery)
+              .withPageable(PageRequest.of(page - 1, size))
+              .withHighlightQuery(highlightQuery)
+              .build();
+
+      SearchHits<ProductDocument> searchHits = this.elasticsearchOperations.search(nativeQuery, ProductDocument.class);
+
+      return searchHits.getSearchHits().stream()
+              .map(hit -> {
+                  ProductDocument productDocument = hit.getContent();
+                  String highlightedName = hit.getHighlightField("name").get(0);
+                  productDocument.setName(highlightedName);
+                  return productDocument;
+              }).toList();
   }
 }

@@ -1,9 +1,12 @@
 package com.example.coupangapiserver.product.controller;
 
+import com.example.coupangapiserver.product.domain.ProductDocument;
 import com.example.coupangapiserver.product.service.ProductService;
 import com.example.coupangapiserver.product.domain.Product;
 import com.example.coupangapiserver.product.dto.CreateProductRequestDto;
 import java.util.List;
+
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,14 +18,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("products")
 public class ProductController {
-
     private final ProductService productService;
-
-    public ProductController(ProductService productService) {
-        this.productService = productService;
-    }
 
     @GetMapping()
     public ResponseEntity<List<Product>> getProducts(@RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int size) {
@@ -36,6 +35,18 @@ public class ProductController {
         return ResponseEntity.ok(suggestions);
     }
 
+    @GetMapping("/search")
+    public ResponseEntity<List<ProductDocument>> searchProducts(
+        @RequestParam String query,
+        @RequestParam(required = false) String category,
+        @RequestParam(defaultValue = "0") double minPrice,
+        @RequestParam(defaultValue = "1000000000") double maxPrice,
+        @RequestParam(defaultValue = "1") int page,
+        @RequestParam(defaultValue = "5") int size
+    ) {
+        List<ProductDocument> products = productService.searchProducts(query, category, minPrice, maxPrice, page, size);
+        return ResponseEntity.ok(products);
+    }
 
     @PostMapping()
     public ResponseEntity<Product> createProduct(@RequestBody CreateProductRequestDto createProductRequestDto) {
