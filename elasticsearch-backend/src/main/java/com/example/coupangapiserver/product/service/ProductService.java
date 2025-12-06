@@ -1,5 +1,6 @@
-package com.example.coupangapiserver.product;
+package com.example.coupangapiserver.product.service;
 
+import com.example.coupangapiserver.product.repository.ProductRepository;
 import com.example.coupangapiserver.product.domain.Product;
 import com.example.coupangapiserver.product.dto.CreateProductRequestDto;
 import java.util.List;
